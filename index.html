@@ -9,128 +9,165 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#090909;color:white;
- font-family:Tahoma,Arial,sans-serif;
-}
-main{max-width:520px;margin:auto;padding:25px 18px}
-header{text-align:center;padding:30px 0}
-.logo{
- width:85px;height:85px;border:2px solid #e32636;
- border-radius:50%;display:grid;place-items:center;
- margin:auto;color:#e32636;font-size:38px;
- box-shadow:0 0 25px #e3263650
-}
-h1{color:#ef3949;font-size:27px;margin:18px 0 8px}
-.sub{color:#999;font-size:13px}
-.panel{
- background:#151515;border:1px solid #292929;
- border-radius:17px;padding:20px;margin-top:20px
-}
-h2{font-size:17px;margin:0 0 16px}
-.song{
- background:#222;border-radius:11px;padding:15px;
- margin:10px 0;cursor:pointer;
- display:flex;align-items:center;gap:12px
-}
-.song:active{background:#3a2023}
-.song-icon{color:#ed3949;font-size:22px}
-.song-name{font-size:13px;overflow-wrap:anywhere}
-button{
- width:100%;padding:13px;border:0;border-radius:10px;
- background:#d92336;color:white;font-size:14px;
- font-weight:bold;margin-top:12px;cursor:pointer
-}
-audio{width:100%;margin-top:18px}
-#status{color:#aaa;font-size:13px;line-height:2}
-footer{text-align:center;color:#777;font-size:12px;margin:30px 0}
+body{margin:0;background:#090909;color:#fff;font-family:Tahoma,Arial,sans-serif}
+main{max-width:520px;margin:auto;padding:20px 16px 35px}
+header{text-align:center;padding:25px 0}
+.logo{width:85px;height:85px;border:2px solid #ed2939;border-radius:50%;display:grid;place-items:center;margin:auto;color:#ed2939;font-size:40px;box-shadow:0 0 25px #ed293955}
+h1{color:#ed2939;font-size:27px;margin:15px 0 8px}
+.sub{color:#999;font-size:12px}
+.panel{background:#151515;border:1px solid #292929;border-radius:18px;padding:17px;margin-top:17px}
+h2{font-size:16px;margin:0 0 14px}
+input{width:100%;padding:13px;border-radius:10px;border:1px solid #383838;background:#222;color:white;font-size:14px;outline:none}
+.song{display:flex;align-items:center;gap:12px;background:#222;padding:14px;border-radius:12px;margin-top:9px;cursor:pointer}
+.song.active{border:1px solid #ed2939;background:#321a1e}
+.song-icon{color:#ed2939;font-size:22px}
+.song-name{font-size:13px;overflow-wrap:anywhere;flex:1}
+#current{color:#ed3949;font-size:14px;margin:12px 0}
+audio{width:100%;margin:8px 0}
+.controls{display:flex;gap:10px}
+button{border:0;border-radius:10px;padding:12px;background:#d92336;color:white;font-weight:bold;cursor:pointer}
+.controls button{flex:1;font-size:14px}
+.refresh{width:100%;margin-top:14px}
+#status{font-size:12px;color:#aaa;line-height:2}
+footer{text-align:center;color:#777;font-size:12px;margin-top:30px}
 </style>
 </head>
 <body>
 <main>
 <header>
- <div class="logo">♪</div>
- <h1>فمن یمت پلیر</h1>
- <div class="sub">پایگاه پخش صوت‌های مذهبی</div>
+<div class="logo">♪</div>
+<h1>فمن یمت پلیر</h1>
+<div class="sub">پایگاه پخش صوت‌های مذهبی</div>
 </header>
 
 <section class="panel">
- <h2>مداحی‌ها</h2>
- <div id="status">در حال دریافت مداحی‌ها...</div>
- <div id="songs"></div>
- <button onclick="loadSongs()">به‌روزرسانی فهرست</button>
+<h2>جست‌وجوی مداحی</h2>
+<input id="search" placeholder="نام مداحی را جست‌وجو کن...">
 </section>
 
 <section class="panel">
- <h2>پخش مداحی</h2>
- <div id="current">هنوز مداحی انتخاب نشده</div>
- <audio id="player" controls preload="none"></audio>
+<h2>فهرست مداحی‌ها</h2>
+<div id="status">در حال دریافت مداحی‌ها...</div>
+<div id="songs"></div>
+<button class="refresh" onclick="loadSongs()">به‌روزرسانی فهرست</button>
 </section>
 
-<footer>فمن یمت یرنی</footer>
+<section class="panel">
+<h2>پخش‌کننده</h2>
+<div id="current">هنوز مداحی انتخاب نشده</div>
+<audio id="player" controls preload="none"></audio>
+<div class="controls">
+<button onclick="previousSong()">قبلی</button>
+<button onclick="togglePlay()">پخش / توقف</button>
+<button onclick="nextSong()">بعدی</button>
+</div>
+</section>
+
+<footer>فمن یمت یرنی ❤️</footer>
 </main>
 
 <script>
-const PROJECT_URL = 'https://aynttkwsjcsqekozpqhu.supabase.co';
-const PUBLIC_KEY = 'sb_publishable_qztglrbcRsrzczgTZA9F_Q_jxeUszFe';
-const BUCKET = 'famanyamot';
+const PROJECT_URL='https://aynttkwsjcsqekozpqhu.supabase.co';
+const PUBLIC_KEY='sb_publishable_qztglrbcRsrzczgTZA9F_Q_jxeUszFe';
+const BUCKET='famanyamot';
 
-const db = window.supabase.createClient(PROJECT_URL, PUBLIC_KEY);
-const songs = document.getElementById('songs');
-const statusBox = document.getElementById('status');
-const player = document.getElementById('player');
-const current = document.getElementById('current');
+const db=window.supabase.createClient(PROJECT_URL,PUBLIC_KEY);
+const songsBox=document.getElementById('songs');
+const statusBox=document.getElementById('status');
+const player=document.getElementById('player');
+const current=document.getElementById('current');
+const search=document.getElementById('search');
+
+let allSongs=[];
+let visibleSongs=[];
+let currentIndex=-1;
 
 async function loadSongs(){
- statusBox.textContent = 'در حال دریافت مداحی‌ها...';
- songs.replaceChildren();
+ statusBox.textContent='در حال دریافت مداحی‌ها...';
+ songsBox.replaceChildren();
 
- const {data,error} = await db.storage
-  .from(BUCKET)
-  .list('', {limit:100,sortBy:{column:'name',order:'asc'}});
+ const {data,error}=await db.storage.from(BUCKET)
+ .list('',{limit:100,sortBy:{column:'name',order:'asc'}});
 
  if(error){
-  statusBox.textContent = 'خطا در دریافت فایل‌ها: ' + error.message;
+  statusBox.textContent='خطا: '+error.message;
   return;
  }
 
- const files = (data || []).filter(file =>
-  /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)
+ allSongs=(data||[]).filter(f=>
+  /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(f.name)
  );
 
- if(files.length === 0){
-  statusBox.textContent = 'هنوز مداحی صوتی در این پوشه پیدا نشد.';
+ if(!allSongs.length){
+  statusBox.textContent='هنوز مداحی صوتی پیدا نشد.';
   return;
  }
 
- statusBox.textContent = files.length + ' مداحی پیدا شد.';
+ statusBox.textContent=allSongs.length+' مداحی پیدا شد.';
+ filterSongs();
+}
 
- files.forEach(file => {
-  const item = document.createElement('div');
-  item.className = 'song';
+function filterSongs(){
+ const term=search.value.trim().toLowerCase();
+ visibleSongs=allSongs.filter(f=>f.name.toLowerCase().includes(term));
+ songsBox.replaceChildren();
 
-  const icon = document.createElement('span');
-  icon.className = 'song-icon';
-  icon.textContent = '♫';
+ if(!visibleSongs.length){
+  songsBox.textContent='مداحی‌ای با این نام پیدا نشد.';
+  return;
+ }
 
-  const name = document.createElement('span');
-  name.className = 'song-name';
-  name.textContent = file.name;
+ visibleSongs.forEach((file,index)=>{
+  const item=document.createElement('div');
+  item.className='song';
+  if(file.name===allSongs[currentIndex]?.name)item.classList.add('active');
+
+  const icon=document.createElement('span');
+  icon.className='song-icon';
+  icon.textContent='♫';
+
+  const name=document.createElement('span');
+  name.className='song-name';
+  name.textContent=file.name;
 
   item.append(icon,name);
-  item.addEventListener('click', () => playSong(file.name));
-  songs.appendChild(item);
+  item.onclick=()=>playSong(file.name);
+  songsBox.appendChild(item);
  });
 }
 
 function playSong(name){
- const {data} = db.storage.from(BUCKET).getPublicUrl(name);
- player.src = data.publicUrl;
- current.textContent = name;
- player.play().catch(() => {
-  current.textContent = name + '؛ برای پخش دکمه Play را بزن.';
- });
+ const {data}=db.storage.from(BUCKET).getPublicUrl(name);
+ player.src=data.publicUrl;
+ current.textContent=name;
+ currentIndex=allSongs.findIndex(f=>f.name===name);
+ filterSongs();
+ player.play().catch(()=>{});
 }
+
+function nextSong(){
+ if(!allSongs.length)return;
+ currentIndex=(currentIndex+1)%allSongs.length;
+ playSong(allSongs[currentIndex].name);
+}
+
+function previousSong(){
+ if(!allSongs.length)return;
+ currentIndex=currentIndex<=0?allSongs.length-1:currentIndex-1;
+ playSong(allSongs[currentIndex].name);
+}
+
+function togglePlay(){
+ if(!player.src){
+  if(allSongs.length)playSong(allSongs[0].name);
+  return;
+ }
+ if(player.paused)player.play();
+ else player.pause();
+}
+
+player.addEventListener('ended',nextSong);
+search.addEventListener('input',filterSongs);
 
 loadSongs();
 </script>
