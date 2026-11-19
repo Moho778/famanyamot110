@@ -9,6 +9,25 @@ export default {
       });
     }
 
+if (request.method === "GET" && url.pathname === "/setup") {
+  return new Response(`
+    <h3>Faman Yamat Player Setup</h3>
+    <input id="secret" type="password" placeholder="WEBHOOK_SECRET">
+    <button onclick="activate()">Activate Telegram</button>
+    <p id="result"></p>
+    <script>
+      async function activate() {
+        const secret = document.getElementById('secret').value;
+        const r = await fetch('/setup', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + secret }
+        });
+        document.getElementById('result').textContent = await r.text();
+      }
+    </script>
+  `, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
     if (request.method === "POST" && url.pathname === "/setup") {
       const auth = request.headers.get("Authorization");
 
