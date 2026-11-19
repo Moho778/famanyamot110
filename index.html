@@ -6,77 +6,134 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#090909">
 <title>فمن یمت پلیر</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{
-  margin:0;background:#090909;color:#fff;
-  font-family:Tahoma,Arial,sans-serif;
-  min-height:100vh;display:flex;justify-content:center;
+ margin:0;background:#090909;color:white;
+ font-family:Tahoma,Arial,sans-serif;
 }
-main{width:100%;max-width:520px;padding:28px 20px}
-header{text-align:center;margin:35px 0}
+main{max-width:520px;margin:auto;padding:25px 18px}
+header{text-align:center;padding:30px 0}
 .logo{
-  width:85px;height:85px;border:2px solid #e32636;
-  border-radius:50%;display:grid;place-items:center;
-  margin:auto;color:#e32636;font-size:32px;
-  box-shadow:0 0 25px #e3263650;
+ width:85px;height:85px;border:2px solid #e32636;
+ border-radius:50%;display:grid;place-items:center;
+ margin:auto;color:#e32636;font-size:38px;
+ box-shadow:0 0 25px #e3263650
 }
-h1{color:#f04452;font-size:27px;margin:18px 0 8px}
+h1{color:#ef3949;font-size:27px;margin:18px 0 8px}
 .sub{color:#999;font-size:13px}
 .panel{
-  background:#151515;border:1px solid #292929;
-  border-radius:18px;padding:20px;margin-top:22px;
+ background:#151515;border:1px solid #292929;
+ border-radius:17px;padding:20px;margin-top:20px
 }
 h2{font-size:17px;margin:0 0 16px}
-button,.choose{
-  display:block;width:100%;padding:15px;border:0;
-  border-radius:12px;background:#d92336;color:white;
-  font-size:15px;font-weight:bold;text-align:center;
-  cursor:pointer;margin-top:12px;
+.song{
+ background:#222;border-radius:11px;padding:15px;
+ margin:10px 0;cursor:pointer;
+ display:flex;align-items:center;gap:12px
 }
-input{display:none}
+.song:active{background:#3a2023}
+.song-icon{color:#ed3949;font-size:22px}
+.song-name{font-size:13px;overflow-wrap:anywhere}
+button{
+ width:100%;padding:13px;border:0;border-radius:10px;
+ background:#d92336;color:white;font-size:14px;
+ font-weight:bold;margin-top:12px;cursor:pointer
+}
 audio{width:100%;margin-top:18px}
-#filename{color:#bbb;font-size:13px;margin-top:15px;overflow-wrap:anywhere}
-.note{color:#888;font-size:12px;line-height:2;text-align:center;margin-top:25px}
+#status{color:#aaa;font-size:13px;line-height:2}
+footer{text-align:center;color:#777;font-size:12px;margin:30px 0}
 </style>
 </head>
 <body>
 <main>
 <header>
-  <div class="logo">♪</div>
-  <h1>فمن یمت پلیر</h1>
-  <div class="sub">پایگاه پخش صوت‌های مذهبی</div>
+ <div class="logo">♪</div>
+ <h1>فمن یمت پلیر</h1>
+ <div class="sub">پایگاه پخش صوت‌های مذهبی</div>
 </header>
 
 <section class="panel">
-  <h2>پخش صوت</h2>
-  <div id="filename">هنوز فایلی انتخاب نشده است</div>
-  <audio id="player" controls></audio>
-  <label class="choose" for="audioFile">انتخاب آهنگ از گوشی</label>
-  <input id="audioFile" type="file" accept="audio/*">
+ <h2>مداحی‌ها</h2>
+ <div id="status">در حال دریافت مداحی‌ها...</div>
+ <div id="songs"></div>
+ <button onclick="loadSongs()">به‌روزرسانی فهرست</button>
 </section>
 
-<p class="note">
-  فمن یمت یرنی<br>
-  نسخه آزمایشی پلیر
-</p>
+<section class="panel">
+ <h2>پخش مداحی</h2>
+ <div id="current">هنوز مداحی انتخاب نشده</div>
+ <audio id="player" controls preload="none"></audio>
+</section>
+
+<footer>فمن یمت یرنی</footer>
 </main>
 
 <script>
-const input = document.getElementById('audioFile');
-const player = document.getElementById('player');
-const filename = document.getElementById('filename');
-let currentUrl = null;
+const PROJECT_URL = 'https://aynttkwsjcsqekozpqhu.supabase.co';
+const PUBLIC_KEY = 'sb_publishable_qztglrbcRsrzczgTZA9F_Q_jxeUszFe';
+const BUCKET = 'famanfamanyamot';
 
-input.addEventListener('change', function(){
-  const file = this.files[0];
-  if(!file) return;
-  if(currentUrl) URL.revokeObjectURL(currentUrl);
-  currentUrl = URL.createObjectURL(file);
-  player.src = currentUrl;
-  filename.textContent = file.name;
-  player.play().catch(()=>{});
-});
+const db = window.supabase.createClient(PROJECT_URL, PUBLIC_KEY);
+const songs = document.getElementById('songs');
+const statusBox = document.getElementById('status');
+const player = document.getElementById('player');
+const current = document.getElementById('current');
+
+async function loadSongs(){
+ statusBox.textContent = 'در حال دریافت مداحی‌ها...';
+ songs.replaceChildren();
+
+ const {data,error} = await db.storage
+  .from(BUCKET)
+  .list('', {limit:100,sortBy:{column:'name',order:'asc'}});
+
+ if(error){
+  statusBox.textContent = 'خطا در دریافت فایل‌ها: ' + error.message;
+  return;
+ }
+
+ const files = (data || []).filter(file =>
+  /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)
+ );
+
+ if(files.length === 0){
+  statusBox.textContent = 'هنوز مداحی صوتی در این پوشه پیدا نشد.';
+  return;
+ }
+
+ statusBox.textContent = files.length + ' مداحی پیدا شد.';
+
+ files.forEach(file => {
+  const item = document.createElement('div');
+  item.className = 'song';
+
+  const icon = document.createElement('span');
+  icon.className = 'song-icon';
+  icon.textContent = '♫';
+
+  const name = document.createElement('span');
+  name.className = 'song-name';
+  name.textContent = file.name;
+
+  item.append(icon,name);
+  item.addEventListener('click', () => playSong(file.name));
+  songs.appendChild(item);
+ });
+}
+
+function playSong(name){
+ const {data} = db.storage.from(BUCKET).getPublicUrl(name);
+ player.src = data.publicUrl;
+ current.textContent = name;
+ player.play().catch(() => {
+  current.textContent = name + '؛ برای پخش دکمه Play را بزن.';
+ });
+}
+
+loadSongs();
 </script>
 </body>
 </html>
+
