@@ -32,19 +32,16 @@ audio{width:100%;margin-top:12px}
 </style>
 </head>
 <body>
-
 <header>
 <h1>فمن یمت پلیر</h1>
 <p>پخش صوت و آثار مذهبی</p>
 </header>
-
 <main>
 <section class="panel">
 <h2>جست‌وجوی فایل صوتی</h2>
 <input id="search" placeholder="نام فایل را جست‌وجو کن...">
 <div id="trackList">در حال دریافت فایل‌ها...</div>
 </section>
-
 <section class="panel">
 <h2>پخش‌کننده</h2>
 <div id="nowPlaying">هنوز فایلی انتخاب نشده است</div>
@@ -54,153 +51,117 @@ audio{width:100%;margin-top:12px}
 <button class="secondary" id="next">بعدی</button>
 </div>
 </section>
-
 <section class="panel">
 <button id="adminToggle">ورود به پنل مدیریت</button>
 <div id="adminPanel" class="hidden">
 <h2>پنل مدیریت و آپلود صوت</h2>
-<p class="small">رمز ۸ رقمی مدیریت و فایل صوتی را وارد کن.</p>
-<input id="adminPassword" type="password" inputmode="numeric" maxlength="8" placeholder="رمز ۸ رقمی">
+<p class="small">رمز مدیریت و فایل صوتی را وارد کن.</p>
+<input id="adminPassword" type="password" autocomplete="current-password" maxlength="64" placeholder="رمز مدیریت">
 <input id="audioFile" type="file" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,audio/*">
 <button id="uploadButton">آپلود فایل صوتی</button>
 <p id="status"></p>
 </div>
 </section>
 </main>
-
 <script>
-const PROJECT_URL = 'https://aynttkwsjcsqekozpqhu.supabase.co';
-const PUBLIC_KEY = 'sb_publishable_qztglrbcRsrzczgTZA9F_Q_jxeUszFe';
-const BUCKET = 'famanyamot';
-const FUNCTION_URL = PROJECT_URL + '/functions/v1/admin-upload';
-
-const db = window.supabase.createClient(PROJECT_URL, PUBLIC_KEY);
-const player = document.getElementById('player');
-const list = document.getElementById('trackList');
-
-let tracks = [];
-let currentIndex = -1;
+const PROJECT_URL='https://aynttkwsjcsqekozpqhu.supabase.co';
+const PUBLIC_KEY='sb_publishable_qztglrbcRsrzczgTZA9F_Q_jxeUszFe';
+const BUCKET='famanyamot';
+const FUNCTION_URL=PROJECT_URL+'/functions/v1/admin-upload';
+const db=window.supabase.createClient(PROJECT_URL,PUBLIC_KEY);
+const player=document.getElementById('player');
+const list=document.getElementById('trackList');
+let tracks=[];
+let currentIndex=-1;
 
 function showName(name){
-  return name.replace(/^\d+-/, '').replace(/%20/g, ' ');
+ return name.replace(/^\d+-/,'').replace(/%20/g,' ');
 }
 
 async function loadTracks(){
-  list.textContent = 'در حال دریافت فایل‌ها...';
-  const {data,error} = await db.storage.from(BUCKET).list('', {
-    limit: 200,
-    sortBy: {column:'name', order:'asc'}
-  });
-
-  if(error){
-    list.textContent = 'خطا در دریافت فایل‌ها: ' + error.message;
-    return;
-  }
-
-  tracks = (data || []).filter(file =>
-    /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)
-  );
-
-  renderTracks();
+ list.textContent='در حال دریافت فایل‌ها...';
+ const {data,error}=await db.storage.from(BUCKET).list('',{
+  limit:200,sortBy:{column:'name',order:'asc'}
+ });
+ if(error){list.textContent='خطا در دریافت فایل‌ها: '+error.message;return;}
+ tracks=(data||[]).filter(file=>/\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name));
+ renderTracks();
 }
 
 function renderTracks(){
-  const query = document.getElementById('search').value.trim().toLowerCase();
-  const filtered = tracks
-    .map((file,index)=>({file,index}))
-    .filter(item=>showName(item.file.name).toLowerCase().includes(query));
-
-  list.innerHTML = '';
-
-  if(!filtered.length){
-    list.textContent = 'فایلی پیدا نشد.';
-    return;
-  }
-
-  filtered.forEach(item=>{
-    const div = document.createElement('div');
-    div.className = 'track' + (currentIndex === item.index ? ' active' : '');
-    div.textContent = showName(item.file.name);
-    div.onclick = ()=>playTrack(item.index);
-    list.appendChild(div);
-  });
+ const query=document.getElementById('search').value.trim().toLowerCase();
+ const filtered=tracks.map((file,index)=>({file,index}))
+  .filter(item=>showName(item.file.name).toLowerCase().includes(query));
+ list.innerHTML='';
+ if(!filtered.length){list.textContent='فایلی پیدا نشد.';return;}
+ filtered.forEach(item=>{
+  const div=document.createElement('div');
+  div.className='track'+(currentIndex===item.index?' active':'');
+  div.textContent=showName(item.file.name);
+  div.onclick=()=>playTrack(item.index);
+  list.appendChild(div);
+ });
 }
 
 function playTrack(index){
-  if(index < 0 || index >= tracks.length) return;
-  currentIndex = index;
-
-  const file = tracks[index];
-  const {data} = db.storage.from(BUCKET).getPublicUrl(file.name);
-
-  player.src = data.publicUrl;
-  document.getElementById('nowPlaying').textContent = showName(file.name);
-  player.play().catch(()=>{});
-  renderTracks();
+ if(index<0||index>=tracks.length)return;
+ currentIndex=index;
+ const file=tracks[index];
+ const {data}=db.storage.from(BUCKET).getPublicUrl(file.name);
+ player.src=data.publicUrl;
+ document.getElementById('nowPlaying').textContent=showName(file.name);
+ player.play().catch(()=>{});
+ renderTracks();
 }
 
 document.getElementById('search').addEventListener('input',renderTracks);
-document.getElementById('previous').onclick = ()=>playTrack(currentIndex - 1);
-document.getElementById('next').onclick = ()=>playTrack(currentIndex + 1);
-player.addEventListener('ended',()=>playTrack(currentIndex + 1));
+document.getElementById('previous').onclick=()=>playTrack(currentIndex-1);
+document.getElementById('next').onclick=()=>playTrack(currentIndex+1);
+player.addEventListener('ended',()=>playTrack(currentIndex+1));
 
-document.getElementById('adminToggle').onclick = ()=>{
-  document.getElementById('adminPanel').classList.toggle('hidden');
+document.getElementById('adminToggle').onclick=()=>{
+ document.getElementById('adminPanel').classList.toggle('hidden');
 };
 
-document.getElementById('uploadButton').onclick = async ()=>{
-  const password = document.getElementById('adminPassword').value;
-  const file = document.getElementById('audioFile').files[0];
-  const status = document.getElementById('status');
-  const button = document.getElementById('uploadButton');
+document.getElementById('uploadButton').onclick=async()=>{
+ const password=document.getElementById('adminPassword').value;
+ const file=document.getElementById('audioFile').files[0];
+ const status=document.getElementById('status');
+ const button=document.getElementById('uploadButton');
 
-  if(!/^\d{8}$/.test(password)){
-    status.textContent = 'رمز باید دقیقاً ۸ رقم باشد.';
-    return;
-  }
+ if(password.length<8||password.length>64){
+  status.textContent='رمز باید بین ۸ تا ۶۴ نویسه باشد.';
+  return;
+ }
+ if(!file){status.textContent='اول فایل صوتی را انتخاب کن.';return;}
+ if(file.size>50*1024*1024){
+  status.textContent='حجم فایل نباید بیشتر از ۵۰ مگابایت باشد.';
+  return;
+ }
 
-  if(!file){
-    status.textContent = 'اول فایل صوتی را انتخاب کن.';
-    return;
-  }
-
-  if(file.size > 50 * 1024 * 1024){
-    status.textContent = 'حجم فایل نباید بیشتر از ۵۰ مگابایت باشد.';
-    return;
-  }
-
-  button.disabled = true;
-  status.textContent = 'در حال آپلود...';
-
-  try{
-    const form = new FormData();
-    form.append('password',password);
-    form.append('file',file);
-
-    const response = await fetch(FUNCTION_URL,{
-      method:'POST',
-      headers:{'apikey':PUBLIC_KEY},
-      body:form
-    });
-
-    const result = await response.json();
-
-    if(!response.ok){
-      throw new Error(result.error || 'آپلود انجام نشد.');
-    }
-
-    status.textContent = 'فایل با موفقیت آپلود شد.';
-    document.getElementById('audioFile').value = '';
-    document.getElementById('adminPassword').value = '';
-    await loadTracks();
-
-  }catch(error){
-    status.textContent = 'خطا: ' + error.message;
-  }finally{
-    button.disabled = false;
-  }
+ button.disabled=true;
+ status.textContent='در حال آپلود...';
+ try{
+  const form=new FormData();
+  form.append('password',password);
+  form.append('file',file);
+  const response=await fetch(FUNCTION_URL,{
+   method:'POST',
+   headers:{'apikey':PUBLIC_KEY},
+   body:form
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||'آپلود انجام نشد.');
+  status.textContent='فایل با موفقیت آپلود شد.';
+  document.getElementById('audioFile').value='';
+  document.getElementById('adminPassword').value='';
+  await loadTracks();
+ }catch(error){
+  status.textContent='خطا: '+error.message;
+ }finally{
+  button.disabled=false;
+ }
 };
-
 loadTracks();
 </script>
 </body>
